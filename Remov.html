@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hapus Latar Belakang</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/last-christmas" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+            padding: 10px;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            width: 450px;
+            text-align: center;
+        }
+        h1 {
+            font-family: 'Last Christmas', sans-serif;
+            font-size: 26px;
+            color: #007aff;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        input[type="file"] {
+            font-size: 16px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 2px solid #007aff;
+            background-color: #ffffff;
+            color: #007aff;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 20px;
+            transition: border-color 0.3s ease;
+        }
+        input[type="file"]:hover {
+            border-color: #0056b3;
+        }
+        #imagePreview {
+            width: 100%;
+            height: 300px;
+            background-color: #f1f1f1;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+        #imagePreview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .btn {
+            background-color: #007aff;
+            color: white;
+            padding: 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 80%;
+            margin: 20px auto;
+            display: none;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        #loadingMessage {
+            display: none;
+            font-size: 16px;
+            color: #666;
+            margin-top: 10px;
+        }
+        #result {
+            display: none;
+            margin-top: 20px;
+        }
+        #outputContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: transparent;
+            border-radius: 10px;
+            overflow: hidden;
+            width: 100%;
+            height: 300px;
+        }
+        #outputContainer img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .download-btn {
+            padding: 12px;
+            background-color: #34c759;
+            color: white;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 16px;
+            display: block;
+            width: 80%;
+            margin: 20px auto;
+            text-align: center;
+            transition: background-color 0.3s ease;
+        }
+        .download-btn:hover {
+            background-color: #2a9e48;
+        }
+        .color-picker {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+            gap: 10px;
+        }
+        .color-picker div {
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .red { background-color: red; }
+        .yellow { background-color: yellow; }
+        .green { background-color: green; }
+        .blue { background-color: blue; }
+        .black { background-color: black; }
+        .transparent { background-color: transparent; border: 2px solid #ccc; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Hapus Latar Belakang</h1>
+    <input type="file" id="uploadImage" accept="image/*">
+    <div id="imagePreview">
+        <span>Pilih gambar untuk ditampilkan</span>
+    </div>
+    <button class="btn" id="removeBtn">Hapus</button>
+
+    <!-- Loading State -->
+    <div id="loadingMessage">Memproses gambar...</div>
+
+    <!-- Result Section -->
+    <div id="result">
+        <h2>Gambar Tanpa Latar Belakang</h2>
+        <div id="outputContainer">
+            <img id="outputImage" src="" alt="Processed Image">
+        </div>
+        <div class="color-picker" id="colorPicker">
+            <div class="red" onclick="changeBackgroundColor('red')"></div>
+            <div class="yellow" onclick="changeBackgroundColor('yellow')"></div>
+            <div class="green" onclick="changeBackgroundColor('green')"></div>
+            <div class="blue" onclick="changeBackgroundColor('blue')"></div>
+            <div class="black" onclick="changeBackgroundColor('black')"></div>
+            <div class="transparent" onclick="changeBackgroundColor('transparent')"></div> <!-- Opsi Transparan -->
+        </div>
+        <a href="#" id="downloadBtn" class="download-btn" download="image_no_bg.png">Unduh Gambar</a>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+<script>
+    const apiKey = '1kEBxEx6dr3ayv3ZDad4bq3M'; // Ganti dengan API key Anda
+    let cropper;
+
+    function previewImage(event) {
+        const file = event.target.files[0];
+        if (!file) return alert('Pilih file gambar terlebih dahulu.');
+
+        const reader = new FileReader();
+        reader.onloadend = function () {
+            const imgElement = document.createElement('img');
+            imgElement.src = reader.result;
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = '';
+            previewContainer.appendChild(imgElement);
+            document.getElementById('removeBtn').style.display = 'inline-block';
+
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(imgElement, {
+                viewMode: 2,
+                autoCropArea: 1,
+                dragMode: 'move',
+                cropBoxResizable: true,
+                aspectRatio: NaN,
+                cropBoxMovable: true,
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeBackground() {
+        if (!cropper) return alert('Pilih dan potong gambar terlebih dahulu.');
+        cropper.getCroppedCanvas().toBlob((blob) => {
+            const formData = new FormData();
+            formData.append('image_file', blob);
+
+            document.getElementById('loadingMessage').style.display = 'block';
+
+            fetch('https://api.remove.bg/v1.0/removebg', {
+                method: 'POST',
+                headers: { 'X-Api-Key': apiKey },
+                body: formData,
+            })
+                .then((response) => response.blob())
+                .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    document.getElementById('outputImage').src = url;
+                    document.getElementById('downloadBtn').href = url;
+                    document.getElementById('result').style.display = 'block';
+                })
+                .finally(() => {
+                    document.getElementById('loadingMessage').style.display = 'none';
+                });
+        });
+    }
+
+    function changeBackgroundColor(color) {
+        const outputContainer = document.getElementById('outputContainer');
+        if (color === 'transparent') {
+            outputContainer.style.backgroundColor = 'transparent';
+        } else {
+            outputContainer.style.backgroundColor = color;
+        }
+    }
+
+    document.getElementById('uploadImage').addEventListener('change', previewImage);
+    document.getElementById('removeBtn').addEventListener('click', removeBackground);
+</script>
+
+</body>
+</html>
